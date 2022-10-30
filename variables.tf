@@ -1,0 +1,23 @@
+
+variable "enabled_cluster_log_types" { default = ["api", "audit", "authenticator"] }
+variable "kubernetes_version" { default = "1.23" }
+variable "endpoint_private_access" { default = true }
+variable "endpoint_public_access" { default = false }
+variable "istio_desired_size" { default = 2 }
+variable "istio_enabled" { default = true }
+variable "istio_max_size" { default = 2 }
+variable "istio_max_unavailable" { default = 1 }
+variable "istio_min_size" { default = 2 }
+variable "node_group_desired_size" { default = 2 }
+variable "node_group_max_size" { default = 2 }
+variable "node_group_max_unavailable" { default = 1 }
+variable "node_group_min_size" { default = 2 }
+variable "okta_client_id" { default = null }
+variable "okta_identity_provider_config_name" { default = null }
+variable "okta_issuer_url" { default = null }
+variable "okta_groups_claim" { default = null }
+variable "okta_username_claim" { default = null }
+variable "okta_enabled" { default = false }
+variable "security_group_ids" { default = [] }
+variable "service_ipv4_cidr" { default = "10.96.0.0/12" }
+variable "subnet_ids" { type = list(string) }
