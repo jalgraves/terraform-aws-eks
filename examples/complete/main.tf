@@ -50,29 +50,15 @@ module "network" {
   vpc_name                        = "${local.env}-${local.region_code}"
 }
 
-data "aws_iam_policy_document" "eks_assume_role" {
-  statement {
-    actions = ["sts:AssumeRole"]
-    principals {
-      type        = "Service"
-      identifiers = ["eks.amazonaws.com", "ec2.amazonaws.com"]
-    }
-  }
-}
-
-resource "aws_iam_role" "eks" {
-  name               = "${title(local.env)}${title(local.region_code)}EKSCluster"
-  assume_role_policy = data.aws_iam_policy_document.eks_assume_role.json
-}
-
-resource "aws_iam_role_policy_attachment" "amazon_eks_cluster_policy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
-  role       = aws_iam_role.eks.name
-}
-
 locals {
   addons = {
     aws_ebs_csi_driver = {
+      enabled = false
+    }
+    coredns = {
+      enabled = false
+    }
+    vpc_cni = {
       enabled = false
     }
   }
@@ -134,10 +120,7 @@ module "eks_disabled" {
 output "endpoint" {
   value = module.eks.endpoint
 }
-output "endpoint_disabled" {
-  value = module.eks_disabled.endpoint
-}
 
 output "sg_id" {
-  value = module.eks_disabled.cluster_security_group_id
+  value = module.eks.cluster_security_group_id
 }

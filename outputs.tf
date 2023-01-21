@@ -8,7 +8,7 @@ output "name" {
 }
 
 output "cluster_security_group_id" {
-  value = one(aws_eks_cluster.this.vpc_config[0].cluster_security_group_id)
+  value = one(aws_eks_cluster.this[*].vpc_config[0].cluster_security_group_id)
 }
 
 output "iam_openid_connect_provider_arn" {

@@ -70,7 +70,7 @@ resource "aws_eks_addon" "aws_ebs_csi_driver" {
 
 resource "aws_eks_addon" "coredns" {
   count             = var.enabled && var.addons.coredns.enabled ? 1 : 0
-  cluster_name      = aws_eks_cluster.this.id
+  cluster_name      = aws_eks_cluster.this[0].id
   addon_name        = "coredns"
   addon_version     = var.addons.coredns.version
   resolve_conflicts = "OVERWRITE"
@@ -78,7 +78,7 @@ resource "aws_eks_addon" "coredns" {
 
 resource "aws_eks_addon" "vpc_cni" {
   count             = var.enabled && var.addons.vpc_cni.enabled ? 1 : 0
-  cluster_name      = aws_eks_cluster.this.id
+  cluster_name      = aws_eks_cluster.this[0].id
   addon_name        = "vpc-cni"
   addon_version     = var.addons.vpc_cni.version
   resolve_conflicts = "OVERWRITE"
@@ -87,6 +87,24 @@ resource "aws_eks_addon" "vpc_cni" {
 data "aws_ssm_parameter" "eks_ami_release_version" {
   count = var.enabled ? 1 : 0
   name  = "/aws/service/eks/optimized-ami/${aws_eks_cluster.this[0].version}/amazon-linux-2/recommended/release_version"
+}
+
+resource "aws_launch_template" "this" {
+  # This template only adds the 'Name' tag to an instance so it is labeled correctly in AWS console
+  for_each = {
+    for group in var.node_groups : group.name => group
+    if var.enabled
+  }
+
+  default_version = 1
+
+  tag_specifications {
+    resource_type = "instance"
+
+    tags = {
+      Name = "${aws_eks_cluster.this[0].name}-${each.value.name}"
+    }
+  }
 }
 
 resource "aws_eks_node_group" "this" {
@@ -102,6 +120,10 @@ resource "aws_eks_node_group" "this" {
   subnet_ids      = var.subnet_ids
   labels = {
     role = each.value.name
+  }
+  launch_template {
+    name    = aws_launch_template.this[each.value.name].name
+    version = aws_launch_template.this[each.value.name].latest_version
   }
   scaling_config {
     desired_size = each.value.desired_size
