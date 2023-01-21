@@ -165,7 +165,7 @@ data "aws_iam_policy_document" "this" {
 }
 
 resource "aws_kms_key" "this" {
-  count = var.encryption.enabled ? 1 : 0
+  count = var.enabled && var.encryption.enabled ? 1 : 0
 
   bypass_policy_lockout_safety_check = false
   customer_master_key_spec           = "SYMMETRIC_DEFAULT"
@@ -179,7 +179,7 @@ resource "aws_kms_key" "this" {
 }
 
 resource "aws_kms_alias" "this" {
-  count = var.encryption.enabled ? 1 : 0
+  count = var.enabled && var.encryption.enabled ? 1 : 0
 
   name          = "alias/${var.cluster_name}"
   target_key_id = aws_kms_key.this[0].key_id

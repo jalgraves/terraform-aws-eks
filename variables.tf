@@ -3,14 +3,30 @@
 # +-+-+-+-+ +-+-+-+-+-+-+-+-+-+ +-+-+-+-+
 # 2023
 
+variable "addons" {
+  default = {
+    aws_ebs_csi_driver = {
+      enabled = true
+      version = "v1.14.1-eksbuild.1"
+    }
+    coredns = {
+      enabled = false
+      version = "v1.8.7-eksbuild.3"
+    }
+    vpc_cni = {
+      enabled = false
+      version = "v1.11.4-eksbuild.1"
+    }
+  }
+}
+
+variable "client_id_list" {
+  type    = list(string)
+  default = ["sts.amazonaws.com"]
+}
 variable "cluster_name" {
   type = string
 }
-variable "enabled_cluster_log_types" { default = ["api", "audit", "authenticator"] }
-variable "kubernetes_version" { default = "1.24" }
-variable "endpoint_private_access" { default = true }
-variable "endpoint_public_access" { default = false }
-
 variable "encryption" {
   type = object({
     enabled    = bool
@@ -23,7 +39,26 @@ variable "encryption" {
     owner_arns = []
   }
 }
-
+variable "enabled" {
+  type    = bool
+  default = true
+}
+variable "enabled_cluster_log_types" {
+  type    = list(string)
+  default = ["api", "audit", "authenticator"]
+}
+variable "endpoint_private_access" {
+  type    = bool
+  default = true
+}
+variable "endpoint_public_access" {
+  type    = bool
+  default = false
+}
+variable "kubernetes_version" {
+  type    = string
+  default = "1.24"
+}
 variable "node_groups" {
   type = list(object({
     capacity_type   = string
@@ -41,16 +76,41 @@ variable "node_groups" {
   }))
   default = []
 }
-
-variable "okta_client_id" { default = null }
-variable "okta_identity_provider_config_name" { default = null }
-variable "okta_issuer_url" { default = null }
-variable "okta_groups_claim" { default = null }
-variable "okta_username_claim" { default = null }
-variable "okta_enabled" { default = false }
+variable "oidc_client_id" {
+  type    = string
+  default = null
+}
+variable "oidc_identity_provider_config_name" {
+  type    = string
+  default = null
+}
+variable "oidc_issuer_url" {
+  type    = string
+  default = null
+}
+variable "oidc_groups_claim" {
+  type    = string
+  default = null
+}
+variable "oidc_username_claim" {
+  type    = string
+  default = null
+}
+variable "oidc_enabled" {
+  type    = bool
+  default = false
+}
 variable "role_arn" {
   type = string
 }
-variable "security_group_ids" { default = [] }
-variable "service_ipv4_cidr" { default = "10.96.0.0/12" }
-variable "subnet_ids" { type = list(string) }
+variable "security_group_ids" {
+  type    = list(string)
+  default = []
+}
+variable "service_ipv4_cidr" {
+  type    = string
+  default = "10.96.0.0/12"
+}
+variable "subnet_ids" {
+  type = list(string)
+}

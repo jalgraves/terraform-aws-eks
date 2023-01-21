@@ -6,9 +6,10 @@
 data "aws_caller_identity" "current" {}
 
 resource "aws_eks_cluster" "this" {
+  count                     = var.enabled ? 1 : 0
   name                      = var.cluster_name
   role_arn                  = var.role_arn
-  enabled_cluster_log_types = ["api", "audit", "authenticator", "controllerManager"]
+  enabled_cluster_log_types = var.enabled_cluster_log_types
   version                   = var.kubernetes_version
 
   kubernetes_network_config {
@@ -35,48 +36,69 @@ resource "aws_eks_cluster" "this" {
 }
 
 data "tls_certificate" "this" {
-  url = aws_eks_cluster.this.identity.0.oidc.0.issuer
+  count = var.enabled ? 1 : 0
+  url   = aws_eks_cluster.this[0].identity[0].oidc[0].issuer
 }
 
 resource "aws_iam_openid_connect_provider" "this" {
-  client_id_list  = ["sts.amazonaws.com"]
-  thumbprint_list = [data.tls_certificate.this.certificates.0.sha1_fingerprint]
-  url             = aws_eks_cluster.this.identity.0.oidc.0.issuer
+  count           = var.enabled ? 1 : 0
+  client_id_list  = var.client_id_list
+  thumbprint_list = [data.tls_certificate.this[0].certificates[0].sha1_fingerprint]
+  url             = aws_eks_cluster.this[0].identity[0].oidc[0].issuer
 }
 
-resource "aws_eks_identity_provider_config" "okta" {
-  count        = var.okta_enabled ? 1 : 0
-  cluster_name = aws_eks_cluster.this.name
+resource "aws_eks_identity_provider_config" "oidc" {
+  count        = var.enabled && var.oidc_enabled ? 1 : 0
+  cluster_name = aws_eks_cluster.this[0].name
 
   oidc {
-    client_id                     = var.okta_client_id
-    identity_provider_config_name = var.okta_identity_provider_config_name
-    issuer_url                    = var.okta_issuer_url
-    groups_claim                  = var.okta_groups_claim
-    username_claim                = var.okta_username_claim
+    client_id                     = var.oidc_client_id
+    identity_provider_config_name = var.oidc_identity_provider_config_name
+    issuer_url                    = var.oidc_issuer_url
+    groups_claim                  = var.oidc_groups_claim
+    username_claim                = var.oidc_username_claim
   }
 }
 
 resource "aws_eks_addon" "aws_ebs_csi_driver" {
-  cluster_name      = aws_eks_cluster.this.id
+  count             = var.enabled && var.addons.aws_ebs_csi_driver.enabled ? 1 : 0
+  cluster_name      = aws_eks_cluster.this[0].id
   addon_name        = "aws-ebs-csi-driver"
-  addon_version     = "v1.10.0-eksbuild.1"
+  addon_version     = var.addons.aws_ebs_csi_driver.version
+  resolve_conflicts = "OVERWRITE"
+}
+
+resource "aws_eks_addon" "coredns" {
+  count             = var.enabled && var.addons.coredns.enabled ? 1 : 0
+  cluster_name      = aws_eks_cluster.this.id
+  addon_name        = "coredns"
+  addon_version     = var.addons.coredns.version
+  resolve_conflicts = "OVERWRITE"
+}
+
+resource "aws_eks_addon" "vpc_cni" {
+  count             = var.enabled && var.addons.vpc_cni.enabled ? 1 : 0
+  cluster_name      = aws_eks_cluster.this.id
+  addon_name        = "vpc-cni"
+  addon_version     = var.addons.vpc_cni.version
   resolve_conflicts = "OVERWRITE"
 }
 
 data "aws_ssm_parameter" "eks_ami_release_version" {
-  name = "/aws/service/eks/optimized-ami/${aws_eks_cluster.this.version}/amazon-linux-2/recommended/release_version"
+  count = var.enabled ? 1 : 0
+  name  = "/aws/service/eks/optimized-ami/${aws_eks_cluster.this[0].version}/amazon-linux-2/recommended/release_version"
 }
 
 resource "aws_eks_node_group" "this" {
   for_each = {
     for group in var.node_groups : group.name => group
+    if var.enabled
   }
   capacity_type   = each.value.capacity_type
-  cluster_name    = aws_eks_cluster.this.name
+  cluster_name    = aws_eks_cluster.this[0].name
   node_group_name = each.value.name
   node_role_arn   = each.value.node_role_arn
-  release_version = nonsensitive(data.aws_ssm_parameter.eks_ami_release_version.value)
+  release_version = nonsensitive(data.aws_ssm_parameter.eks_ami_release_version[0].value)
   subnet_ids      = var.subnet_ids
   labels = {
     role = each.value.name
